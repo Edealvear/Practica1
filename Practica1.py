@@ -25,19 +25,6 @@ def add_data(storage, index, value, mutex):
         mutex.release()
 
 
-# def get_data(storage, index, mutex):
-#     mutex.acquire()
-#     try:
-#         data = storage[0]
-#         index.value = index.value - 1
-#         delay()
-#         for i in range(index.value):
-#             storage[i] = storage[i + 1]
-#         storage[index.value] = -1
-#     finally:
-#         mutex.release()
-#     return data
-
 def elim_data(storage, index):
     index.value -= 1
     for i in range(index.value):
