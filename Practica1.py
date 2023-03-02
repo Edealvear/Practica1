@@ -6,7 +6,7 @@ from time import sleep
 from random import random, randint
 
 
-N = 20
+N = 10
 K = 7
 NPROD = 3
 NCONS = 1
@@ -25,17 +25,44 @@ def add_data(storage, index, value, mutex):
         mutex.release()
 
 
+# def elim_data(storage, index):
+#     index.value -= 1
+#     for i in range(index.value):
+#         storage[i] = storage[i+1]
+#     storage[index.value] = -2
+
+
+
+# def get_data(storages, index, mutex):
+#     for mut in mutex:
+#         mut.acquire()
+#     ind = -1
+#     data = -1
+#     try:
+#         for i in range(len(storages)):
+#             if (data>0) and (storages[i][0]< data) and (storages[i][0]>=0):
+#                 data = storages[i][0]
+#                 ind = i
+#             elif (storages[i][0] > data) and (data < 0):
+#                 data = storages[i][0]
+#                 ind = i 
+#         delay()
+#         elim_data(storages[ind], index[ind])
+#     finally:
+#         for mut in mutex:
+#             mut.release()
+#         return (data, ind)
+
 def elim_data(storage, index):
     index.value -= 1
     for i in range(index.value):
         storage[i] = storage[i+1]
     storage[index.value] = -2
-    print([i for i in storage])
+
 
 
 def get_data(storages, index, mutex):
-    for mut in mutex:
-        mut.acquire()
+
     ind = -1
     data = -1
     try:
@@ -45,14 +72,16 @@ def get_data(storages, index, mutex):
                 ind = i
             elif (storages[i][0] > data) and (data < 0):
                 data = storages[i][0]
-                ind = i 
-        delay()
-        elim_data(storages[ind], index[ind])
+                ind = i
+        if ind!=-1:
+            print(f"almacen de prod_{ind} antes de eliminar {[i for i in storages[ind]]}")
+            mutex[ind].acquire()
+            delay()
+            elim_data(storages[ind], index[ind])
+            print([i for i in storages[ind]])
+            mutex[ind].release()
     finally:
-        for mut in mutex:
-            mut.release()
         return (data, ind)
-            
 
 def producer(storage, index, empty, non_empty, mutex, value):
     for v in range(N):
@@ -69,24 +98,49 @@ def producer(storage, index, empty, non_empty, mutex, value):
     value.value=-1
     empty.acquire()
     add_data(storage , index, value, mutex)
+    print(f"almacen final de producer {current_process().name}: {[i for i in storage]}")
     non_empty.release()
 
 
-
 def consumer(storage, index, empty, non_empty, mutex, consum):
-    for v in range(N*NPROD):
-        for nonempty in non_empty:
-            nonempty.acquire()
+    consumiendo = True
+    v=0
+    for nonempty in non_empty:
+        nonempty.acquire()
+    while consumiendo:
+    #for v in range(N*NPROD):
         print (f"consumer {current_process().name} desalmacenando")
         (dato, i) = get_data(storage, index, mutex)
-        for j in range(NPROD):
-            if j != i:
-                non_empty[j].release()
-        empty[i].release()
-        consum[v] = dato
-        print (f"consumer {current_process().name} consumiendo {dato} de producer {i}")
-        print([j for j in consum])
-        delay()
+        if i == -1:
+            consumiendo = False
+        else:
+            empty[i].release()
+            consum[v] = dato
+            v+=1
+            print (f"consumer {current_process().name} consumiendo {dato} de producer {i}")
+            delay()
+            non_empty[i].acquire()
+
+# def consumer(storage, index, empty, non_empty, mutex, consum):
+#     consumiendo = True
+#     v=0
+#     while consumiendo:
+#     #for v in range(N*NPROD):
+#         for nonempty in non_empty:
+#             nonempty.acquire()
+#         print (f"consumer {current_process().name} desalmacenando")
+#         (dato, i) = get_data(storage, index, mutex)
+#         if i == -1:
+#             consumiendo = False
+#         else:
+#             for j in range(NPROD):
+#                 if j != i:
+#                     non_empty[j].release()
+#             empty[i].release()
+#             consum[v] = dato
+#             v+=1
+#             print (f"consumer {current_process().name} consumiendo {dato} de producer {i}")
+#             delay()
 
 def main():
     consum=Array('i',NPROD * N)
@@ -115,6 +169,7 @@ def main():
 
     for p in prodlst + conslst:
         p.join()
+    print([i for i in consum])
     print("TERMINO")
 
 
